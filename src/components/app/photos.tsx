@@ -48,18 +48,24 @@ export function PhotoGrid({ attachments, uploads, editable, onRemove, onDismissU
         </li>
       ))}
       {uploads.map((u) => (
-        <li key={u.key} className="relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100" title={u.name}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- local preview of a selected file */}
-          <img src={u.previewUrl} alt={`Uploading ${u.name}`} className={cn("size-full object-cover", u.error ? "opacity-30" : "opacity-60")} />
+        <li key={u.key} className="relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100" title={u.error ?? u.name}>
           {u.error ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-1 text-center">
-              <AlertCircle className="size-5 text-red-700" aria-hidden />
-              <span className="sr-only">{u.error}</span>
-              <button type="button" className="rounded bg-white/90 px-1.5 text-[11px] font-medium text-slate-800" onClick={() => onDismissUpload(u.key)}>
+            // No preview for failed files: they may not be images at all.
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 border border-red-200 bg-red-50 p-1 text-center">
+              <AlertCircle className="size-5 shrink-0 text-red-700" aria-hidden />
+              <span className="w-full truncate text-[11px] text-red-900">{u.name}</span>
+              <span className="sr-only">Upload failed: {u.error}</span>
+              <button type="button" className="rounded bg-white px-1.5 text-[11px] font-medium text-slate-800 shadow-sm" onClick={() => onDismissUpload(u.key)}>
                 Dismiss
               </button>
             </div>
           ) : (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- local preview of a selected file */}
+              <img src={u.previewUrl} alt={`Uploading ${u.name}`} className="size-full object-cover opacity-60" />
+            </>
+          )}
+          {!u.error && (
             <div className="absolute inset-x-1 bottom-1">
               <div className="h-1.5 overflow-hidden rounded-full bg-white/80" role="progressbar" aria-valuenow={u.progress} aria-valuemin={0} aria-valuemax={100} aria-label={`Uploading ${u.name}`}>
                 <div className="h-full bg-blue-900 transition-all" style={{ width: `${u.progress}%` }} />

@@ -21,7 +21,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="font-sans antialiased">
         {children}
-        <Toaster position="top-center" richColors closeButton />
+        {/* Offset keeps toasts below the 64px top bar so they never cover the menu button. */}
+        <Toaster position="top-center" richColors closeButton offset={{ top: 72 }} mobileOffset={{ top: 72 }} />
       </body>
     </html>
   );

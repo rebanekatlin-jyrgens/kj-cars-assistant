@@ -18,7 +18,8 @@ export function MessageBubble({ message, pending = false }: { message: MessageDt
       <div className={cn("flex max-w-[85%] flex-col sm:max-w-[75%]", isUser ? "items-end" : "items-start")}>
         <div
           className={cn(
-            "rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed shadow-sm sm:text-sm",
+            // relative: keeps the sr-only label inside the bubble so it can't stretch the page height
+            "relative rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed shadow-sm sm:text-sm",
             isUser ? "rounded-tr-sm bg-blue-900 text-white" : "rounded-tl-sm border border-slate-200 bg-white text-slate-900",
             pending && "opacity-70",
           )}

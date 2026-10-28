@@ -17,7 +17,8 @@ export const GET = handler(async (_request: Request, { params }: RouteParams) =>
     headers: {
       "Content-Type": attachment.mimeType,
       "Content-Length": String(attachment.size),
-      "Cache-Control": "private, max-age=3600",
+      // no-store: a shared device must not show photos from the browser cache after access changes.
+      "Cache-Control": "private, no-store",
       "Content-Disposition": `inline; filename="${attachment.filename.replace(/"/g, "")}"`,
       "X-Content-Type-Options": "nosniff",
       "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'",

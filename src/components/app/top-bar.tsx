@@ -92,7 +92,7 @@ export function TopBar({ title, onMenu, onManagePrompts, settings, prompts, onCh
         <Badge title="The assistant uses a guided workflow and simulated AI responses.">Demo mode</Badge>
 
         <div className="hidden items-end gap-3 xl:flex">
-          <div className="w-44"><ModelAndPrompt idPrefix="top" settings={settings} prompts={prompts} onChange={onChange} /></div>
+          <div className="grid w-[26rem] grid-cols-2 gap-3"><ModelAndPrompt idPrefix="top" settings={settings} prompts={prompts} onChange={onChange} /></div>
         </div>
         <Button variant="outline" size="sm" className="hidden xl:inline-flex" onClick={onManagePrompts}>
           <BookText /> Manage Prompts

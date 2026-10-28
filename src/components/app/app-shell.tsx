@@ -307,7 +307,7 @@ export function AppShell() {
 
       <main className="flex min-w-0 flex-1 flex-col">
         <TopBar
-          title={chat?.title ?? "New chat"}
+          title={chats.find((c) => c.id === chat?.id)?.title ?? chat?.title ?? "New chat"}
           onMenu={() => setSidebarOpen(true)}
           onManagePrompts={() => setPromptsOpen(true)}
           settings={settings}
@@ -318,7 +318,7 @@ export function AppShell() {
           hasChat={!!chat}
         />
 
-        <div className="min-h-0 flex-1 overflow-y-auto" aria-live="polite">
+        <div className="relative min-h-0 flex-1 overflow-y-auto" aria-live="polite">
           {loadError ? (
             <div className="mx-auto mt-16 max-w-md px-4 text-center">
               <AlertTriangle className="mx-auto size-10 text-amber-600" aria-hidden />
@@ -332,13 +332,13 @@ export function AppShell() {
             <div className="flex h-full items-center justify-center text-slate-500">
               <Loader2 className="mr-2 size-5 animate-spin" /> Loading...
             </div>
-          ) : !chat || (chat.messages.length === 0 && !pending && !chat.enquiry) ? (
+          ) : !pending && (!chat || (chat.messages.length === 0 && !chat.enquiry)) ? (
             <Welcome onSell={sellMyCar} busy={starting} />
           ) : (
             <div className="mx-auto w-full max-w-3xl px-3 py-5 sm:px-6">
               {enquiry && <DemoNotice className="mb-5" />}
               <ol className="space-y-4" aria-label="Conversation">
-                {chat.messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+                {chat?.messages.map((m) => <MessageBubble key={m.id} message={m} />)}
                 {pending && <MessageBubble message={pending} pending />}
                 {pending && <TypingIndicator />}
               </ol>
@@ -347,7 +347,7 @@ export function AppShell() {
                   enquiry={enquiry}
                   uploads={uploads}
                   onEnquiryChange={(e) => { setEnquiry(() => e); refreshChats(); }}
-                  onChatChange={(c) => { setChat(c); refreshChats(); }}
+                  onChatChange={(c) => { setChat(c); setUploads([]); refreshChats(); }}
                   onAddPhotos={addPhotos}
                   onRemovePhoto={removePhoto}
                   onDismissUpload={dismissUpload}
@@ -362,7 +362,7 @@ export function AppShell() {
           <div className="border-t border-slate-200 bg-white px-3 pt-3 sm:px-6">
             <div className="mx-auto max-w-3xl">
               <p className="mb-2 text-xs font-medium text-slate-600">Vehicle photos ({enquiry.attachments.length}/{MAX_PHOTOS})</p>
-              <PhotoGrid attachments={enquiry.attachments} uploads={uploads} editable={enquiry.status === "Draft"} onRemove={removePhoto} onDismissUpload={dismissUpload} className="grid-cols-5 sm:grid-cols-8 md:grid-cols-8" />
+              <PhotoGrid attachments={enquiry.attachments} uploads={uploads} editable={enquiry.status === "Draft"} onRemove={removePhoto} onDismissUpload={dismissUpload} className="grid-cols-[repeat(auto-fill,4rem)] sm:grid-cols-[repeat(auto-fill,4rem)] md:grid-cols-[repeat(auto-fill,4rem)]" />
             </div>
           </div>
         )}
