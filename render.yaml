@@ -1,0 +1,27 @@
+# Render Blueprint for KJ Cars Assistant.
+# Creates ONLY the web service. It uses the existing Render PostgreSQL database
+# "kj-cars-db" - no database is defined or created here.
+services:
+  - type: web
+    name: kj-cars-assistant
+    runtime: node
+    # Use the same region as kj-cars-db so the Internal Database URL works.
+    # region: frankfurt
+    plan: free
+    branch: main
+    autoDeploy: true
+    # The build never connects to the database.
+    buildCommand: npm ci && npm run build
+    # Applies committed migrations, runs the idempotent prompt seed, then starts
+    # Next.js on 0.0.0.0:$PORT (next start reads Render's PORT variable).
+    startCommand: npm run start:render
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      # Set in the Render dashboard: paste the Internal Database URL of kj-cars-db.
+      # Never commit this value.
+      - key: DATABASE_URL
+        sync: false

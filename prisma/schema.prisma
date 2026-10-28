@@ -1,0 +1,156 @@
+// KJ Cars Assistant data model.
+// All visitor-owned data hangs off Visitor and is removed when the visitor is removed.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// An anonymous visitor. Access is granted by an AccessToken stored in an HttpOnly cookie.
+model Visitor {
+  id           String          @id @default(cuid())
+  createdAt    DateTime        @default(now())
+  accessTokens AccessToken[]
+  resumeLinks  ResumeLink[]
+  chats        ChatSession[]
+  prompts      SystemPrompt[]
+  enquiries    VehicleEnquiry[]
+  attachments  Attachment[]
+}
+
+// One per browser/device. Only the SHA-256 hash of the cookie value is stored.
+model AccessToken {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  visitorId  String
+  visitor    Visitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([visitorId])
+}
+
+// Expiring, one-time "Continue on another device" link. Only the hash is stored.
+model ResumeLink {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  visitorId String
+  visitor   Visitor   @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  chatId    String?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([visitorId])
+}
+
+// Default prompts have ownerId = null and are shared templates.
+// Editing a default creates a visitor-owned copy (basedOnId points to the default).
+model SystemPrompt {
+  id        String         @id @default(cuid())
+  slug      String?        @unique
+  name      String
+  content   String
+  isDefault Boolean        @default(false)
+  ownerId   String?
+  owner     Visitor?       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  basedOnId String?
+  basedOn   SystemPrompt?  @relation("PromptCopies", fields: [basedOnId], references: [id], onDelete: SetNull)
+  copies    SystemPrompt[] @relation("PromptCopies")
+  chats     ChatSession[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([ownerId, basedOnId])
+  @@index([ownerId])
+}
+
+model ChatSession {
+  id             String          @id @default(cuid())
+  visitorId      String
+  visitor        Visitor         @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  title          String          @default("New chat")
+  // Simulated model choice: "gpt-4" | "claude" | "local-llama"
+  model          String          @default("claude")
+  temperature    Float           @default(0.7)
+  topP           Float           @default(1.0)
+  // Deleting a prompt keeps the chat; the chat then has no prompt selected.
+  systemPromptId String?
+  systemPrompt   SystemPrompt?   @relation(fields: [systemPromptId], references: [id], onDelete: SetNull)
+  messages       Message[]
+  enquiry        VehicleEnquiry?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([visitorId, updatedAt])
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  chatId    String
+  chat      ChatSession @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  // "user" | "assistant"
+  role      String
+  content   String
+  createdAt DateTime    @default(now())
+
+  @@index([chatId, createdAt])
+}
+
+model VehicleEnquiry {
+  id             String       @id @default(cuid())
+  visitorId      String
+  visitor        Visitor      @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  // A submitted enquiry is kept when its chat is deleted (chatId becomes null).
+  // Draft enquiries are deleted explicitly together with their chat.
+  chatId         String?      @unique
+  chat           ChatSession? @relation(fields: [chatId], references: [id], onDelete: SetNull)
+  // Current workflow step, see src/lib/seller/flow.ts
+  step           String       @default("make")
+  make           String?
+  model          String?
+  year           Int?
+  registration   String?
+  vin            String?
+  mileageKm      Int?
+  fuelType       String?
+  transmission   String?
+  serviceHistory String?
+  defects        String?
+  askingPriceEur Int?
+  location       String?
+  sellerName     String?
+  email          String?
+  phone          String?
+  // "Draft" | "Submitted"
+  status         String       @default("Draft")
+  reference      String?      @unique
+  consentAt      DateTime?
+  submittedAt    DateTime?
+  attachments    Attachment[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([visitorId])
+}
+
+// Photo bytes are stored in PostgreSQL for this prototype (survives redeploys).
+model Attachment {
+  id        String         @id @default(cuid())
+  enquiryId String
+  enquiry   VehicleEnquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  visitorId String
+  visitor   Visitor        @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  filename  String
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime       @default(now())
+
+  @@index([enquiryId])
+  @@index([visitorId])
+}
