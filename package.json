@@ -10,7 +10,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start -H 0.0.0.0",
-    "start:render": "prisma migrate deploy && node prisma/seed.mjs && next start -H 0.0.0.0",
+    "start:deploy": "prisma migrate deploy && node prisma/seed.mjs && next start -H 0.0.0.0",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "node prisma/seed.mjs",
     "lint": "tsc --noEmit",

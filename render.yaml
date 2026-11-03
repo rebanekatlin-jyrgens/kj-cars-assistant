@@ -14,7 +14,7 @@ services:
     buildCommand: npm ci && npm run build
     # Applies committed migrations, runs the idempotent prompt seed, then starts
     # Next.js on 0.0.0.0:$PORT (next start reads Render's PORT variable).
-    startCommand: npm run start:render
+    startCommand: npm run start:deploy
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION

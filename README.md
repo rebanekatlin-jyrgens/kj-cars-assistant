@@ -32,8 +32,8 @@ The application runs in **demo mode** and calls **no real AI model**:
 | --- | --- |
 | Framework | Next.js 15 (App Router) with TypeScript |
 | UI | Tailwind CSS v4, shadcn/ui-style components (Radix UI), Lucide React icons, Sonner toasts |
-| Database | Render PostgreSQL (`kj-cars-db`) with Prisma ORM 6 |
-| Hosting | Render Web Service, auto-deployed from GitHub `main` |
+| Database | Railway PostgreSQL with Prisma ORM 6 |
+| Hosting | Railway service, auto-deployed from GitHub `main` (a Render Blueprint is kept as an alternative) |
 | Source | https://github.com/rebanekatlin-jyrgens/kj-cars-assistant |
 
 ## Project structure
@@ -50,7 +50,9 @@ src/lib/seller/flow.ts   Seller workflow state machine and shared validators
 src/lib/server/          Database client, visitor access, error handling, simulation
 src/lib/client/api.ts    Browser API client, including sendMessage()
 scripts/check-flow.ts    Offline checks for the workflow and validators
-render.yaml              Render Blueprint (web service only)
+railway.json             Railway build, start and health check settings
+render.yaml              Alternative Render Blueprint (web service only)
+CLAUDE.md                Instructions for Claude Code sessions
 ```
 
 ## Data model
@@ -86,57 +88,53 @@ All endpoints are scoped to the visitor's cookie. A resource that belongs to ano
 | `POST /api/resume`, `POST /api/resume/redeem` | Create and redeem a cross-device resume token |
 | `GET /api/health` | Health check (does not touch the database) |
 
-## Deploying on Render
+## Deploying on Railway
 
-The app uses the **existing** Render PostgreSQL database **`kj-cars-db`**. Do **not** create another database.
+The app runs as a Railway service built from this GitHub repository, with a Railway PostgreSQL database in the same project. `railway.json` holds the build, start and health check settings, so no commands need to be typed into the Railway dashboard.
+
+### Setup
+
+1. Sign in at https://railway.com with **Continue with GitHub**.
+2. **+ New > Database > PostgreSQL** creates a project with a `Postgres` service.
+3. In the project, **+ New > GitHub Repo** and select `rebanekatlin-jyrgens/kj-cars-assistant` (grant the Railway GitHub app access to this repository if asked). Railway deploys branch `main` on every push.
+4. Open the **app service** (not Postgres) > **Variables** and add `DATABASE_URL` with the value `${{Postgres.DATABASE_URL}}`, then click **Deploy** in the changes bar.
+5. **Settings > Networking > Generate Domain**. If Railway asks for a port, use the port shown in the deploy log (Next.js listens on Railway's `PORT`, usually `8080`).
 
 ### Required environment variables
 
 | Variable | Value |
 | --- | --- |
-| `DATABASE_URL` | The **Internal Database URL** of `kj-cars-db` (from the database's *Connections* section in the Render dashboard). Set it only in Render; never paste it into chats or commit it. |
-| `NODE_VERSION` | `22` (set by `render.yaml`; `.nvmrc` also says 22) |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}`, a reference to the Railway PostgreSQL service. Set it only in Railway; never paste the real value into chats or commit it. |
 | `NEXT_TELEMETRY_DISABLED` | `1` (optional) |
 
-`PORT` is provided by Render automatically. `next start -H 0.0.0.0` listens on all interfaces and reads `PORT` itself.
-
-### Option A: Blueprint (`render.yaml`)
-
-1. In Render choose **New > Blueprint** and connect `rebanekatlin-jyrgens/kj-cars-assistant` (branch `main`).
-2. The Blueprint defines **only the web service**, with no database. When asked for `DATABASE_URL`, paste the Internal Database URL of `kj-cars-db` into the Render form.
-3. Make sure the web service is in the **same region** as `kj-cars-db` (uncomment and set `region` in `render.yaml` if needed). Otherwise use the External Database URL.
-
-### Option B: Web Service created manually
-
-1. **New > Web Service**, then connect the GitHub repository and select branch `main`. Auto-Deploy should be **On commit**.
-2. Settings:
-   - **Runtime:** Node
-   - **Region:** same as `kj-cars-db`
-   - **Build Command:** `npm ci && npm run build`
-   - **Start Command:** `npm run start:render`
-   - **Health Check Path:** `/api/health`
-3. **Environment:** add `DATABASE_URL` (Internal Database URL of `kj-cars-db`) and `NODE_VERSION=22`.
+`PORT` is provided by Railway automatically. `next start -H 0.0.0.0` listens on all interfaces and reads `PORT` itself. The Node.js version (22) comes from `.nvmrc`.
 
 ### Build, migrations and seed
 
-- **Build** (`npm run build` = `prisma generate && next build`) **does not need database access**. All API routes are dynamic and only connect at request time.
-- **Start** (`npm run start:render`) runs:
-  1. `prisma migrate deploy`: applies the committed migrations in `prisma/migrations` (a no-op when they are already applied).
+- **Build** (`npm run build` = `prisma generate && next build`) **does not need database access**. All API routes are dynamic and only connect at request time. This matters on Railway, where the private database address is only reachable at runtime.
+- **Start** (`npm run start:deploy`, set in `railway.json`) runs:
+  1. `prisma migrate deploy`: applies the committed migrations in `prisma/migrations` (a no-op when they are already applied). The deploy log shows "All migrations have been successfully applied".
   2. `node prisma/seed.mjs`: the **idempotent** seed. It upserts the default prompts *KJ Cars Seller Assistant*, *Coder*, *Writer* and *Math* by slug, never creates duplicates and never overwrites them.
   3. `next start -H 0.0.0.0`.
-- On a paid Render plan you can instead set **Pre-Deploy Command** to `npm run db:migrate && npm run db:seed` and **Start Command** to `npm start`.
-- To re-run manually, use the web service's **Shell** tab: `npm run db:migrate` and `npm run db:seed`.
+- Railway waits for `GET /api/health` to answer before switching traffic to a new deployment.
+- To inspect the data, open the **Postgres** service > **Database** tab.
 - To change the schema later, edit `prisma/schema.prisma`, create a migration with `npx prisma migrate dev --name <change>` against a development database, then commit the new folder in `prisma/migrations`.
 
 ### Public domain
 
-Render gives the service a public URL such as `https://kj-cars-assistant.onrender.com` (see the service page). To use your own domain, open **Settings > Custom Domains**, add the domain, create the DNS record Render shows (CNAME, or A/ALIAS for an apex domain) and wait for the TLS certificate. No app configuration changes are needed, because the resume link is built from the browser's current origin.
+**Generate Domain** gives the service a public URL such as `https://<name>.up.railway.app`. To use your own domain, add it under **Settings > Networking > Custom Domain** and create the DNS record Railway shows. No app configuration changes are needed, because the resume link is built from the browser's current origin.
 
-> On the free plan the service sleeps after a period of inactivity, so the first request can take up to about a minute.
+### Costs
+
+A new Railway account gets a one-time trial credit, then a small monthly free credit. Check **Usage** in the workspace menu. Delete the project (**Settings > Danger > Delete Project**) when it is no longer needed.
+
+## Alternative: deploying on Render
+
+`render.yaml` defines a Render Web Service (no database) with build command `npm ci && npm run build`, start command `npm run start:deploy` and health check `/api/health`. Set `DATABASE_URL` to the Internal Database URL of an existing Render PostgreSQL database in the same region.
 
 ## Photo storage
 
-For this small prototype, photo **bytes are stored in PostgreSQL** (`Attachment.data`), so they survive redeploys. Render's container filesystem is ephemeral and is never used. Photos are served only through `GET /api/attachments/[id]`, which checks that the requesting visitor owns the photo. The real file type is detected from the file's first bytes, not trusted from the browser.
+For this small prototype, photo **bytes are stored in PostgreSQL** (`Attachment.data`), so they survive redeploys. The container filesystem is ephemeral and is never used. Photos are served only through `GET /api/attachments/[id]`, which checks that the requesting visitor owns the photo. The real file type is detected from the file's first bytes, not trusted from the browser.
 
 **For production, object storage (for example S3 or Cloudflare R2) with short-lived signed URLs is preferable.** Storing images in the database increases database size, backup time and memory use.
 
@@ -171,7 +169,7 @@ npm run lint         # TypeScript type check
 npm run test:flow    # seller workflow and validator checks
 ```
 
-### Checklist on the deployed Render app
+### Checklist on the deployed Railway app
 
 Use fictional data, for example *Skoda Octavia, 2016, 123 ABC, 145000 km, Diesel, Manual, Tartu, Jane Example, jane@example.com*.
 
@@ -184,7 +182,7 @@ Use fictional data, for example *Skoda Octavia, 2016, 123 ABC, 145000 km, Diesel
 7. **Second device**: open **Continue on another device**, scan the QR code with a phone and continue the same conversation. Opening the link a second time should fail.
 8. **Privacy**: in a private window (a new visitor), opening `/?chat=<id>` of another visitor shows "That conversation no longer exists or isn't available in this browser." Photo URLs return 404.
 9. **Responsive layout**: check desktop (sidebar about 260px) and mobile (hamburger menu, and the input stays visible while the keyboard is open).
-10. **Persistence**: trigger a manual redeploy in Render and check that chats, prompts, enquiries and photos are still there.
+10. **Persistence**: trigger a redeploy in Railway (**Deployments > Redeploy**) and check that chats, prompts, enquiries and photos are still there.
 
 ## Local development (optional)
 
