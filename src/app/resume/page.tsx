@@ -28,7 +28,7 @@ export default function ResumePage() {
   }, []);
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-slate-50 px-4">
+    <main className="flex h-full overflow-y-auto items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         <span className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-blue-900 text-white">
           <Car className="size-6" aria-hidden />
