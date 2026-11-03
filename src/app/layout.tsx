@@ -19,8 +19,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased">
-        {children}
+      {/* Pages fill the space above the footer, so the whole app still fits one screen. */}
+      <body className="flex h-dvh flex-col font-sans antialiased">
+        <div className="min-h-0 flex-1">{children}</div>
+        <footer className="shrink-0 border-t border-slate-200 bg-white px-4 py-1.5 text-center text-xs text-slate-500">
+          © 2026 KJ Cars. Built with Claude Code
+        </footer>
         {/* Offset keeps toasts below the 64px top bar so they never cover the menu button. */}
         <Toaster position="top-center" richColors closeButton offset={{ top: 72 }} mobileOffset={{ top: 72 }} />
       </body>
